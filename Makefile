@@ -11,6 +11,9 @@ $(programme) : $(programme).o
 $(programme).o : $(programme).c
 	gcc -c $< -o $@ $(options)
 
+test : $(programme)
+	./$(programme) $@
+
 clean : 
 	rm -fr *.out *.o tp1
 
