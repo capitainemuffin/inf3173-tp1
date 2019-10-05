@@ -5,8 +5,11 @@
 Implémentation en C d'un validateur de Sudoku
 
 `Cours` : Principes des systèmes d'exploitation
+
 `Sigle` : INF3173
+
 `Session` : Automne 2019
+
 `Université` : UQAM
 
 ## Auteur
@@ -18,10 +21,12 @@ Sofiane Selaoui (SELS28049204)
 Le programme valide un ou plusieurs Sudokus contenus dans un fichier texte.
 
 Pour compiler le programme : 
+
 `gcc tp1.c -lpthread -o tp1`
 
 Pour lancer le programme :
-`tp1 fichier`
+
+`./tp1 fichier`
 
 Pour que le programme fonctionne : 
 
@@ -33,7 +38,7 @@ Pour que le programme fonctionne :
 
 Commande : 
 
-`tp1 sudokus.txt`
+`./tp1 sudokus.txt`
 
 Sortie : 
 
