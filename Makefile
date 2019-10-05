@@ -12,10 +12,10 @@ $(programme).o : $(programme).c
 	gcc -c $< -o $@ $(options)
 
 test : $(programme)
-	./$(programme) $@
+	@./tests/$@.sh $(test)
 
 clean : 
-	rm -fr *.out *.o tp1
+	@rm -fr *.out *.o tp1
 
 push :
 	git add .
