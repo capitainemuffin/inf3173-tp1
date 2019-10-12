@@ -38,7 +38,7 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	FILE* fichier = fopen(argv[1], "r");
+	FILE* fichier = fopen(argv[1], "rb");
 
 	if(fichier == NULL){
 		fprintf(stderr, "Une erreur est survenue à l'ouverture du fichier.\n");
@@ -46,42 +46,63 @@ int main(int argc, char *argv[])
 
 	}
 
-	char sudoku [MAX][MAX]; 
-	char caractere;
+	char caractere, sudoku [MAX][MAX]; 
 	int sudoku_format_valide;
+
 	while((caractere = fgetc(fichier)) != EOF){
 
-		if(!isspace(caractere)){
+		if(isspace(caractere)) continue;
 
+		#ifdef DEBUG
+			printf("==== DEBUT SUDOKU === \n");
+		#endif
+
+		fseek(fichier, -1, SEEK_CUR);
+		sudoku_format_valide = getSudoku(sudoku, fichier);
+
+		#ifdef DEBUG
+			printf("Sudoku valeur de retour : %d\n", sudoku_format_valide);
+		#endif
+
+		if(sudoku_format_valide == 0){
+			//lancer les threads
 			#ifdef DEBUG
-				printf("==== DEBUT SUDOKU === \n");
+			printf("==== VALIDE === \n");
 			#endif
 
-			//Remettre le pointeur en bonne position pour la lecture
-			fseek(fichier, -1, SEEK_CUR);
-			sudoku_format_valide = getSudoku(sudoku, fichier);
+			int sudoku_valide [MAX * 3];
+			// for(int i = 0 ; i < 9 ; i++) {
 
-			#ifdef DEBUG
-				printf("Sudoku format valide : %d", sudoku_format_valide);
-			#endif
+			// 	verifierColonne(i, sudoku_valide);
+			// 	verifierLigne(i, sudoku_valide);
+			// 	verifierSousMatrice(i, sudoku_valide);
 
-			if(sudoku_format_valide != 1){
+			// }
 
-				//Passer au prochain Sudoku
-				while(fgetc(fichier) != '\n' || fgetc(fichier) != '\n'){
-					fseek(fichier, -1, SEEK_CUR);
+		}
+
+		//Passer au prochain sudoku, détecter 2 sauts de ligne de suite
+		fseek(fichier, -1, SEEK_CUR);
+		while((caractere = fgetc(fichier)) != EOF){
+			if(caractere == '\n' || caractere == '\r'){
+				if(caractere == '\n' && fgetc(fichier) != '\r') fseek(fichier,-1,SEEK_CUR);
+				if(caractere == '\r' && fgetc(fichier) != '\n') fseek(fichier,-1,SEEK_CUR);
+				caractere = fgetc(fichier);
+				if(caractere == '\n' || caractere == '\r'){
+					if(caractere == '\n' && fgetc(fichier) != '\r') fseek(fichier,-1,SEEK_CUR);
+					if(caractere == '\r' && fgetc(fichier) != '\n') fseek(fichier,-1,SEEK_CUR);
+					break;
 				}
 			}
-
-			#ifdef DEBUG
-				printf("==== FIN SUDOKU === \n");
-			#endif
 		}
+
+		#ifdef DEBUG
+			printf("==== FIN SUDOKU === \n");
+		#endif
 
 	}
 
 	fclose(fichier);
-
 	return 0;	
 }
 
@@ -92,10 +113,18 @@ int getSudoku(char matrice[MAX][MAX], FILE* fichier){
 
 	while((chiffre = fgetc(fichier)) != EOF){
 
-		//Ignorer les espaces dans le fichier
+		#ifdef DEBUG
+		if(chiffre == '\n') printf("\\n ");
+		if(chiffre == '\r') printf("\\r ");
+		#endif
+
+		//Ignorer les espaces
 		if(chiffre == ' ' || chiffre == '\v' || chiffre == '\t') continue;
 
 		if(chiffre == '\n' || chiffre == '\r'){
+
+			if(chiffre == '\n' && fgetc(fichier) != '\r') fseek(fichier,-1,SEEK_CUR);
+			if(chiffre == '\r' && fgetc(fichier) != '\n') fseek(fichier,-1,SEEK_CUR);
 
 			#ifdef DEBUG
 			printf("finligne, ligne : %d, colonne : %d\n", ligne, colonne);
@@ -106,13 +135,25 @@ int getSudoku(char matrice[MAX][MAX], FILE* fichier){
 				return -1;
 			}
 
+			//Détecter si dernière ligne du Sudoku (2 sauts de lignes de suite)
+			chiffre = fgetc(fichier);
+			if((chiffre == '\n' || chiffre == '\r') && ligne != MAX){
+				#ifdef DEBUG
+				if(chiffre == '\n') printf("\\n");
+				if(chiffre == '\r') printf("\\r");
+				#endif
+				fprintf(stderr, "La taille de la grille de Sudoku devrait être 9x9\n");
+				fseek(fichier,-1,SEEK_CUR);
+				return -2;
+			}
+			fseek(fichier,-1,SEEK_CUR);
+
 			//la matrice est complète
 			if(ligne == MAX){
-				//Remettre le pointeur en bonne position 
 				fseek(fichier,-1,SEEK_CUR);
-				return 1;
-			} 
-			
+				return 0;
+			}
+
 			ligne ++;
 			colonne = 1;
 
@@ -124,14 +165,13 @@ int getSudoku(char matrice[MAX][MAX], FILE* fichier){
 
 			if(!isdigit(chiffre)) {
 				fprintf(stderr, "La case (%d,%d) contient un caractère non-entier (%c)\n", ligne, colonne, chiffre);
-				return -2;
+				return -3;
 
 			}
 
 			if(colonne > MAX || ligne > MAX){
 				fprintf(stderr, "La taille de la grille de Sudoku devrait être 9x9\n");
-				return -1;
-
+				return -4;
 			}		
 
 			matrice[ligne - 1][colonne - 1] = chiffre;
@@ -146,9 +186,9 @@ int getSudoku(char matrice[MAX][MAX], FILE* fichier){
 		printf("fin fichier, ligne : %d, colonne : %d\n", ligne, colonne);
 		#endif
 		fprintf(stderr, "La taille de la grille de Sudoku devrait être 9x9\n");
-		return -1;
+		return -5;
 	}
 
-	return 1;
+	return 0;
 
 }
