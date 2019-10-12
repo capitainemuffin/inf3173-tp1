@@ -59,5 +59,9 @@ elif [[ $1 == 'validFormat' ]]; then
 		echo '=== SUMMARY : OK ===';
 	fi 
 
+else 
+
+	echo 'invalid argument';
+
 fi 
 
