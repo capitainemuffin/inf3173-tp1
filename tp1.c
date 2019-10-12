@@ -95,7 +95,7 @@ int getSudoku(char matrice[MAX][MAX], FILE* fichier){
 		//Ignorer les espaces dans le fichier
 		if(chiffre == ' ' || chiffre == '\v' || chiffre == '\t') continue;
 
-		if(chiffre == '\n'){
+		if(chiffre == '\n' || chiffre == '\r'){
 
 			#ifdef DEBUG
 			printf("finligne, ligne : %d, colonne : %d\n", ligne, colonne);
