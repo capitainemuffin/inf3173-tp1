@@ -4,28 +4,40 @@
 #include <ctype.h>
 
 #define MAX 9
-
+char sudoku [MAX][MAX];
+char sections_valides[MAX * 3];
 /**
 * Thread qui valide une ligne
 **/
-void* verifierLigne(void* param);
+void* verifierLigne(void* i);
 
 /**
 * Thread qui valide une colonne
 **/
-void* verifierColonne(void* param);
+void* verifierColonne(void* i);
 
 /**
 * Thread qui valide une sous matrice 
 **/
-void* verifierSousMatrice(void* param);
+void* verifierSousMatrice(void* i);
 
 /**
-* Mets le sudoku d'un fichier dans une matrice.
+* Mets le sudoku d'un fichier le tableau 'sudoku'.
 * Valide la taille et le format en même temps.
-* Renvoi 1 si le format est valide, une valeur négative sinon.
+* Renvoi 0 si le format est valide, une valeur négative sinon.
 **/
-int getSudoku(char matrice[MAX][MAX], FILE* fichier);
+int getSudoku(FILE* fichier);
+
+/**
+* Vérifie le tableau 'section_valides' et renvoi 0 si toutes les valeurs sont 0. 
+* Renvoi -1 sinon.
+**/
+int sudokuValide();
+
+/**
+* Déplace le pointeur du fichier au prochain Sudoku
+**/
+void prochainSudoku(FILE* fichier);
 
 /**
 * Éxecution
@@ -46,7 +58,7 @@ int main(int argc, char *argv[])
 
 	}
 
-	char caractere, sudoku [MAX][MAX]; 
+	char caractere; 
 	int sudoku_format_valide;
 
 	while((caractere = fgetc(fichier)) != EOF){
@@ -58,7 +70,7 @@ int main(int argc, char *argv[])
 		#endif
 
 		fseek(fichier, -1, SEEK_CUR);
-		sudoku_format_valide = getSudoku(sudoku, fichier);
+		sudoku_format_valide = getSudoku(fichier);
 
 		#ifdef DEBUG
 			printf("Sudoku valeur de retour : %d\n", sudoku_format_valide);
@@ -70,35 +82,31 @@ int main(int argc, char *argv[])
 			printf("==== VALIDE === \n");
 			#endif
 
-			int sudoku_valide [MAX * 3];
-			// for(int i = 0 ; i < 9 ; i++) {
+			pthread_t threads [MAX * 3];
+			
+			for (int i = 0 ; i < 9 ; i++){
 
-			// 	verifierColonne(i, sudoku_valide);
-			// 	verifierLigne(i, sudoku_valide);
-			// 	verifierSousMatrice(i, sudoku_valide);
+				pthread_create(&threads[i * 1], NULL, &verifierLigne, &i);
+				pthread_create(&threads[i + MAX], NULL, &verifierColonne, &i);
+				//pthread_create(&threads[i + 2 * MAX], NULL, &verifierSousMatrice, &i);
 
-			// }
-
-		}
-
-		//Passer au prochain sudoku, détecter 2 sauts de ligne de suite
-		fseek(fichier, -1, SEEK_CUR);
-		while((caractere = fgetc(fichier)) != EOF){
-			if(caractere == '\n' || caractere == '\r'){
-				if(caractere == '\n' && fgetc(fichier) != '\r') fseek(fichier,-1,SEEK_CUR);
-				if(caractere == '\r' && fgetc(fichier) != '\n') fseek(fichier,-1,SEEK_CUR);
-				caractere = fgetc(fichier);
-				if(caractere == '\n' || caractere == '\r'){
-					if(caractere == '\n' && fgetc(fichier) != '\r') fseek(fichier,-1,SEEK_CUR);
-					if(caractere == '\r' && fgetc(fichier) != '\n') fseek(fichier,-1,SEEK_CUR);
-					break;
-				}
 			}
+
+			for (int i = 0 ; i < MAX * 3 ; i++){
+
+				pthread_join(threads[i], NULL);
+
+			}
+
+			if(sudokuValide() == 0) fprintf(stdout, "Bravo! Votre Sudoku est valide!\n");
+
 		}
 
 		#ifdef DEBUG
 			printf("==== FIN SUDOKU === \n");
 		#endif
+
+		prochainSudoku(fichier);
 
 	}
 
@@ -106,7 +114,7 @@ int main(int argc, char *argv[])
 	return 0;	
 }
 
-int getSudoku(char matrice[MAX][MAX], FILE* fichier){
+int getSudoku(FILE* fichier){
 
 	char chiffre;
 	int colonne = 1, ligne = 1;
@@ -148,7 +156,7 @@ int getSudoku(char matrice[MAX][MAX], FILE* fichier){
 			}
 			fseek(fichier,-1,SEEK_CUR);
 
-			//la matrice est complète
+			//le sudoku est complet
 			if(ligne == MAX){
 				fseek(fichier,-1,SEEK_CUR);
 				return 0;
@@ -174,7 +182,7 @@ int getSudoku(char matrice[MAX][MAX], FILE* fichier){
 				return -4;
 			}		
 
-			matrice[ligne - 1][colonne - 1] = chiffre;
+			sudoku[ligne - 1][colonne - 1] = chiffre;
 			colonne ++;
 
 		}
@@ -190,5 +198,79 @@ int getSudoku(char matrice[MAX][MAX], FILE* fichier){
 	}
 
 	return 0;
+
+}
+
+void* verifierLigne(void* i){
+
+	int ligne = *(int*)i;
+
+	for(int i = 0 ; i < MAX ; i++){
+		for (int j = i + 1; j < MAX; j++){
+
+			if(sudoku[ligne][i] == sudoku[ligne][j]){
+
+				fprintf(stderr, "Il y a un doublon à la ligne %d. %c et %c.\n", ligne + 1, sudoku[ligne][i], sudoku[ligne][j]);
+				sections_valides[ligne] = -1;
+				pthread_exit(NULL);
+			}
+
+		}
+	}
+
+	sections_valides[ligne] = 0;
+	pthread_exit(NULL);
+}
+
+void* verifierColonne(void* i){
+
+	int colonne = *(int*)i;
+
+	for(int i = 0 ; i < MAX ; i++){
+		for (int j = i + 1; j < MAX; j++){
+
+			if(sudoku[i][colonne] == sudoku[j][colonne]){
+
+				fprintf(stderr, "Il y a un doublon à la colonne %d. %c et %c.\n", colonne + 1, sudoku[i][colonne], sudoku[j][colonne]);
+				sections_valides[colonne + MAX] = -1;
+				pthread_exit(NULL);
+
+			}
+
+		}
+	}
+
+	sections_valides[colonne + MAX] = 0;
+	pthread_exit(NULL);
+
+}
+
+int sudokuValide(){
+
+	for (int i = 0 ; i < MAX * 3 ; i++){
+
+		if(sections_valides[i] != 0) return -1;
+	}
+
+	return 0;
+}
+
+void prochainSudoku(FILE* fichier){
+
+	char caractere;
+	//Passer au prochain sudoku, détecter 2 sauts de ligne de suite
+	fseek(fichier, -1, SEEK_CUR);
+	while((caractere = fgetc(fichier)) != EOF){
+		if(caractere == '\n' || caractere == '\r'){
+			if(caractere == '\n' && fgetc(fichier) != '\r') fseek(fichier,-1,SEEK_CUR);
+			if(caractere == '\r' && fgetc(fichier) != '\n') fseek(fichier,-1,SEEK_CUR);
+			caractere = fgetc(fichier);
+			if(caractere == '\n' || caractere == '\r'){
+				if(caractere == '\n' && fgetc(fichier) != '\r') fseek(fichier,-1,SEEK_CUR);
+				if(caractere == '\r' && fgetc(fichier) != '\n') fseek(fichier,-1,SEEK_CUR);
+				break;
+			}
+		}
+	}
 
 }
