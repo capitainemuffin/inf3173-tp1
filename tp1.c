@@ -71,16 +71,37 @@ int main(int argc, char *argv[]) {
         if (format_valide == 0) {
 
             pthread_t threads[MAX * 3];
+            void *threads_status[MAX * 3];
+            int* index = malloc(sizeof(int) * MAX);
 
-            for (int index = 0; index < MAX; index++) {
+            for (int i = 0; i < MAX; i++) {
+                index[i] = i;
 
-                pthread_create(&threads[index], NULL, &verifierLigne, &index);
-                pthread_create(&threads[index + MAX], NULL, &verifierColonne, &index);
-                //pthread_create(&threads[index + 2 * MAX], NULL, &verifierSousMatrice, &index);
+                if (pthread_create(&threads[i], NULL, verifierLigne, &index[i]) != 0) {
+                    fprintf(stderr, "Vérification de ligne : une erreur est survenue à l'ouverture de thread #%d\n",
+                            i);
+                    exit(3);
+                }
+
+                if (pthread_create(&threads[i + MAX], NULL, verifierColonne, &index[i]) != 0) {
+                    fprintf(stderr, "Vérification de colonne : une erreur est survenue à l'ouverture de thread #%d\n",
+                            i + MAX);
+                    exit(4);
+                }
+
+                //pthread_create(&threads[i + 2 * MAX], NULL, verifierSousMatrice, (void*)&index);
 
             }
 
-            for (int i = 0; i < MAX * 3; i++) pthread_join(threads[i], NULL);
+            free(index);
+
+            for (int i = 0; i < MAX * 2; i++) {
+
+                if (pthread_join(threads[i], &threads_status[i]) != 0) {
+                    fprintf(stderr, "Une erreur est survenue à l'attente de fin du thread #%d\n", i);
+                    exit(5);
+                }
+            }
 
             if (sudokuValide() == 0) fprintf(stdout, "Bravo! Votre Sudoku est valide!\n");
 
@@ -164,13 +185,11 @@ int getSudoku(FILE *fichier) {
 
 void *verifierLigne(void *i) {
 
-    int ligne = *(int *) i;
-
+    int ligne = *(int*) i;
     for (int z = 0; z < MAX; z++) {
         for (int j = z + 1; j < MAX; j++) {
 
             if (sudoku[ligne][z] == sudoku[ligne][j]) {
-                printf("Ligne analysée : %d\n", ligne);
                 fprintf(stderr, "Il y a un doublon à la ligne %d. Le chiffre %c est présent plus d'une fois.\n",
                         ligne + 1, sudoku[ligne][z]);
                 sections_valides[ligne] = -1;
@@ -186,7 +205,7 @@ void *verifierLigne(void *i) {
 
 void *verifierColonne(void *i) {
 
-    int colonne = *(int *) i;
+    int colonne = *(int*) i;
 
     for (int z = 0; z < MAX; z++) {
         for (int j = z + 1; j < MAX; j++) {
