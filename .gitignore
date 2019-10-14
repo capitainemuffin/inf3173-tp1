@@ -2,3 +2,6 @@
 *.o
 tp1
 *.development
+cmake-build-debug/*
+CMakeLists.txt
+.idea/*
