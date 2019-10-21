@@ -89,13 +89,17 @@ int main(int argc, char *argv[]) {
                     exit(4);
                 }
 
-                //pthread_create(&threads[i + 2 * MAX], NULL, verifierSousMatrice, (void*)&index);
+                if (pthread_create(&threads[i + 2 * MAX], NULL, verifierSousMatrice, &index[i]) !=0) {
+                    fprintf(stderr, "Vérification de colonne : une erreur est survenue à l'ouverture de thread #%d\n",
+                            i + MAX);
+                    exit(4);
+                }
 
             }
 
             free(index);
 
-            for (int i = 0; i < MAX * 2; i++) {
+            for (int i = 0; i < MAX * 3; i++) {
 
                 if (pthread_join(threads[i], &threads_status[i]) != 0) {
                     fprintf(stderr, "Une erreur est survenue à l'attente de fin du thread #%d\n", i);
@@ -190,7 +194,7 @@ void *verifierLigne(void *i) {
         for (int j = z + 1; j < MAX; j++) {
 
             if (sudoku[ligne][z] == sudoku[ligne][j]) {
-                fprintf(stderr, "Il y a un doublon à la ligne %d. Le chiffre %c est présent plus d'une fois.\n",
+                fprintf(stdout, "Il y a un doublon à la ligne %d. Le chiffre %c est présent plus d'une fois.\n",
                         ligne + 1, sudoku[ligne][z]);
                 sections_valides[ligne] = -1;
                 pthread_exit(NULL);
@@ -212,7 +216,7 @@ void *verifierColonne(void *i) {
 
             if (sudoku[z][colonne] == sudoku[j][colonne]) {
 
-                fprintf(stderr, "Il y a un doublon à la colonne %d. Le chiffre %c est présent plus d'une fois.\n",
+                fprintf(stdout, "Il y a un doublon à la colonne %d. Le chiffre %c est présent plus d'une fois.\n",
                         colonne + 1, sudoku[z][colonne]);
                 sections_valides[colonne + MAX] = -1;
                 pthread_exit(NULL);
@@ -224,6 +228,54 @@ void *verifierColonne(void *i) {
 
     sections_valides[colonne + MAX] = 0;
     pthread_exit(NULL);
+
+}
+
+void *verifierSousMatrice(void *i){
+
+    int index = *(int*)i; 
+    int indexes [MAX][2]= { 
+
+            {1,1}, {1,4}, {1,7},
+            {4,1}, {4,4}, {4,7},
+            {7,1}, {7,4}, {7,7}
+
+        };
+
+    int ligne_debut = indexes[index][0] -1;
+    int colonne_debut = indexes[index][1] -1;
+    int ligne_fin = ligne_debut + 3;
+    int colonne_fin = colonne_debut + 3;
+
+
+    int valeurs [MAX];
+    int v = 0;
+
+    for(int z = ligne_debut; z < ligne_fin; z++){
+        for(int j = colonne_debut; j < colonne_fin; j++) {
+            valeurs[v] = sudoku[z][j];
+            v++;
+        }
+    }
+
+    for(int z = 0; z < MAX; z++){
+
+        for (int j = z + 1 ; j < MAX ; j++){
+
+            if(valeurs[z] == valeurs [j]) {
+                fprintf(stdout, "Il y a un doublon à la sous-matrice %d. Le chiffre %c est présent plus d'une fois.\n",
+                        index + 1, valeurs[z]);
+
+                sections_valides[index + 2 * MAX] = -1;
+                pthread_exit(NULL);
+
+            }
+        }
+    }
+
+    sections_valides[index + 2 * MAX] = 0;
+    pthread_exit(NULL);
+
 
 }
 
