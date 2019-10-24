@@ -1,5 +1,5 @@
 programme=tp1
-options=-Wall -pedantic -std=c11
+options=-Wall -pedantic -std=c11 -lpthread
 
 .PHONY : clean default push test
 
