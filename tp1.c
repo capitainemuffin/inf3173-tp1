@@ -97,8 +97,6 @@ int main(int argc, char *argv[]) {
 
             }
 
-            free(index);
-
             for (int i = 0; i < MAX * 3; i++) {
 
                 if (pthread_join(threads[i], &threads_status[i]) != 0) {
@@ -106,7 +104,8 @@ int main(int argc, char *argv[]) {
                     exit(5);
                 }
             }
-
+            
+            free(index);
             if (sudokuValide() == 0) fprintf(stdout, "Bravo! Votre Sudoku est valide!\n");
 
         }
